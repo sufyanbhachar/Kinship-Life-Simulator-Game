@@ -1,0 +1,6 @@
+{
+  "name": "Legacy & Ambition: Life Simulator",
+  "description": "A deep life simulation game with complex character relationships, career ladders, business empires, sports leagues, artistic pursuits, and social status dynamics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
