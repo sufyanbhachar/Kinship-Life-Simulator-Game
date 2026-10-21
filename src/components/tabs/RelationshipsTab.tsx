@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useGame } from '../../context/GameContext';
 import { Gender, RelationshipContact } from '../../types/game';
-import { Baby, Briefcase, Heart, Sparkles, UserPlus, Users, AlertCircle } from 'lucide-react';
+import { Baby, Briefcase, Heart, Sparkles, UserPlus, Users, AlertCircle, Globe } from 'lucide-react';
 import { CharacterAvatar } from '../CharacterAvatar';
 import { DatingAppModal } from '../DatingAppModal';
+import { isPakistaniCity } from '../../utils/names';
+import { getDatingConfigForCity } from '../../data/datingData';
 
 const CAREER_CHOICES = [
   'Doctor & Specialized Surgeon',
@@ -35,6 +37,7 @@ export const RelationshipsTab: React.FC = () => {
   const spouses = character.relationships.filter((c) => c.type === 'Spouse');
   const datingPartners = character.relationships.filter((c) => c.type === 'Dating');
   const children = character.relationships.filter((c) => c.type === 'Child');
+  const exes = character.relationships.filter((c) => c.type === 'Ex-Spouse' || c.type === 'Ex-Partner');
 
   const youngestChild = children.reduce(
     (min, c) => (min === null || c.age < min.age ? c : min),
@@ -70,8 +73,11 @@ export const RelationshipsTab: React.FC = () => {
     if (filterType === 'romance') return c.type === 'Spouse' || c.type === 'Dating';
     if (filterType === 'friends') return c.type === 'Friend';
     if (filterType === 'society') return c.type === 'High Society Patron' || c.type === 'Work Rival';
+    if (filterType === 'exes') return c.type === 'Ex-Spouse' || c.type === 'Ex-Partner';
     return true;
   });
+
+  const inPakistan = isPakistaniCity(character.city);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -89,24 +95,57 @@ export const RelationshipsTab: React.FC = () => {
                 {spouses.length > 0 ? 'Status: Married (1 Spouse)' : 'Status: Single'}
               </span>
             )}
+            {!inPakistan && (
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded bg-sky-100 text-sky-900 border border-sky-200 flex items-center gap-1">
+                <Globe className="w-3 h-3" />
+                <span>Expat in {character.city}</span>
+              </span>
+            )}
           </div>
           <h3 className="font-grotesk text-3xl font-bold text-[#1C1C1C]">
             {character.relationships.length} Kinship Connections
           </h3>
           <p className="text-xs text-[#1C1C1C] opacity-75 mt-1 max-w-xl">
-            Nurture family ties, raise children born at home, court opposite-gender suitors via the DilMil Dating App, and build your Pakistani dynasty.
+            {inPakistan
+              ? 'Nurture family ties, raise children born at home, court opposite-gender suitors via the DilMil Dating App, and build your Pakistani dynasty.'
+              : `Living abroad in ${character.city}. DilMil is paused and region-locked to Pakistan; Tinder Global is unlocked for international dating and local suitors.`
+            }
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          {/* Open DilMil Dating App Button */}
-          <button
-            onClick={() => setIsDatingAppOpen(true)}
-            className="text-xs py-2 px-3.5 rounded-lg bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all"
-          >
-            <Heart className="w-4 h-4 fill-white" />
-            <span>DilMil Dating App {character.age < 15 ? '(Unlocks Age 15)' : ''}</span>
-          </button>
+          {inPakistan ? (
+            /* In Pakistan: DilMil is active */
+            <button
+              onClick={() => setIsDatingAppOpen(true)}
+              className="text-xs py-2 px-3.5 rounded-lg text-white font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700"
+            >
+              <Heart className="w-4 h-4 fill-white" />
+              <span>DilMil Dating App {character.age < 15 ? '(Age 15+)' : ''}</span>
+            </button>
+          ) : (
+            /* Abroad: DilMil is paused / stopped; local international app is unlocked */
+            <>
+              <button
+                disabled={true}
+                title="DilMil is strictly region-locked to Pakistan. Services are paused while residing abroad."
+                className="text-xs py-2 px-3 rounded-lg bg-gray-200 text-gray-500 font-medium flex items-center gap-1.5 cursor-not-allowed border border-black/10"
+              >
+                <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                <span>DilMil (Paused · Region-Locked)</span>
+              </button>
+
+              <button
+                onClick={() => setIsDatingAppOpen(true)}
+                className="text-xs py-2 px-3.5 rounded-lg text-white font-bold flex items-center gap-1.5 shadow-sm cursor-pointer transition-all bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-600 hover:from-purple-700 hover:to-sky-700"
+              >
+                <Heart className="w-4 h-4 fill-white" />
+                <span>
+                  {getDatingConfigForCity(character.city).appName} · {character.city.split(',')[0]} (Unlocked) {character.age < 15 ? '(Age 15+)' : ''}
+                </span>
+              </button>
+            </>
+          )}
 
           {/* Have Baby Button */}
           <button
@@ -246,7 +285,8 @@ export const RelationshipsTab: React.FC = () => {
           { id: 'children', label: `Children (${children.length})` },
           { id: 'romance', label: `Spouses & Dating (${spouses.length + datingPartners.length})` },
           { id: 'friends', label: 'Friends' },
-          { id: 'society', label: 'Patrons & Rivals' }
+          { id: 'society', label: 'Patrons & Rivals' },
+          { id: 'exes', label: `Former Ties (${exes.length})` }
         ].map((f) => (
           <button
             key={f.id}
@@ -287,6 +327,8 @@ export const RelationshipsTab: React.FC = () => {
                       {contact.type === 'Spouse' && <span title="Spouse">💍</span>}
                       {contact.type === 'Child' && <span title="Child">👶</span>}
                       {contact.type === 'Dating' && <span title="Dating Partner">💖</span>}
+                      {contact.type === 'Ex-Spouse' && <span title="Ex-Spouse" className="text-rose-600">💔</span>}
+                      {contact.type === 'Ex-Partner' && <span title="Ex-Partner" className="text-stone-500">🥀</span>}
                     </h4>
                     <span className="meta-label text-[#B8860B] truncate">
                       {contact.type} · Age {contact.age} ({contact.gender === 'Female' ? '♀' : '♂'})

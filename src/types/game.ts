@@ -135,7 +135,7 @@ export interface BusinessVenture {
   isPublic: boolean;
 }
 
-export type RelationType = 'Parent' | 'Sibling' | 'Child' | 'Friend' | 'Spouse' | 'Dating' | 'Work Rival' | 'High Society Patron';
+export type RelationType = 'Parent' | 'Sibling' | 'Child' | 'Friend' | 'Spouse' | 'Dating' | 'Work Rival' | 'High Society Patron' | 'Ex-Spouse' | 'Ex-Partner';
 
 export interface RelationshipContact {
   id: string;
@@ -216,6 +216,14 @@ export interface LifeDilemma {
   situation: string;
   category: 'career' | 'romance' | 'ethics' | 'society' | 'business' | 'sports' | 'art' | 'secret' | 'visa' | 'lifestyle';
   choices: DilemmaChoice[];
+  minAge?: number;
+  maxAge?: number;
+  requiresAdult?: boolean; // age >= 18
+  requiresUniversityEnrolled?: boolean; // enrolled in university degree in progress
+  requiresDegreeField?: CorporateField; // e.g. Tech, Finance, Medicine
+  requiresLivingAbroad?: boolean;
+  requiresLivingInPakistan?: boolean;
+  requiresJob?: boolean;
 }
 
 export interface CharacterState {

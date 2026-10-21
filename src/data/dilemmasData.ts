@@ -8,6 +8,9 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_pma_cadet_draft',
     title: 'PMA Cadet Academy Commission',
     category: 'career',
+    minAge: 18,
+    requiresAdult: true,
+    requiresLivingInPakistan: true,
     situation: 'A formal letter arrives from the Armed Forces Selection Board offering you direct cadet commission into the Military Academy.',
     choices: [
       {
@@ -64,6 +67,8 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_underworld_recruitment',
     title: 'Shadow Syndicate Proposition',
     category: 'career',
+    minAge: 18,
+    requiresAdult: true,
     situation: 'A slick gang lieutenant in a tinted black SUV pulls up. He offers you $45,000/yr to oversee street logistics and black-market enforcements.',
     choices: [
       {
@@ -122,6 +127,9 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_corporate_headhunter',
     title: 'Surprise Corporate Job Offer',
     category: 'career',
+    minAge: 18,
+    requiresAdult: true,
+    requiresDegreeField: 'Tech',
     situation: 'An executive headhunter contacts you with an immediate opening at a top multinational software & tech firm.',
     choices: [
       {
@@ -177,6 +185,9 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_banking_internship',
     title: 'Investment Banking Fast-Track',
     category: 'career',
+    minAge: 18,
+    requiresAdult: true,
+    requiresDegreeField: 'Finance',
     situation: 'A family friend at a leading private equity house offers you an accelerated analyst desk position with an $110,000 annual package.',
     choices: [
       {
@@ -236,6 +247,9 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_unexpected_rishta',
     title: 'Grand Family Rishta Proposal',
     category: 'romance',
+    minAge: 18,
+    requiresAdult: true,
+    requiresLivingInPakistan: true,
     situation: 'A respected family visits your house with boxes of fresh Gulab Jamun, proposing a matrimonial match with their accomplished child.',
     choices: [
       {
@@ -274,6 +288,7 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_cafe_secret_note',
     title: 'The Hand-Written Coffee Note',
     category: 'romance',
+    minAge: 15,
     situation: 'At your favorite cafe, the barista hands you a napkin with a phone number and a sweet sketch of your smile from a charming patron.',
     choices: [
       {
@@ -312,6 +327,7 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_childhood_friend_confession',
     title: 'A Friend\'s Secret Feelings',
     category: 'romance',
+    minAge: 15,
     situation: 'During an evening walk on the terrace, a longtime close companion nervously admits they have been in love with you for years.',
     choices: [
       {
@@ -434,6 +450,8 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_bribe_the_inspector',
     title: 'The Corrupt Municipal Inspector',
     category: 'ethics',
+    minAge: 18,
+    requiresAdult: true,
     situation: 'A city building inspector threatens to halt construction on your family property unless you slip him a $4,000 cash envelope under the table.',
     choices: [
       {
@@ -476,6 +494,8 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_whistleblower_fraud',
     title: 'The Tax Evasion Ledger',
     category: 'ethics',
+    minAge: 18,
+    requiresAdult: true,
     situation: 'A partner at work asks you to sign off on a fraudulent tax return, offering to split $50,000 in saved tax money with you.',
     choices: [
       {
@@ -601,6 +621,8 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_vip_underground_poker',
     title: 'VIP High-Stakes Underground Game',
     category: 'secret',
+    minAge: 18,
+    requiresAdult: true,
     situation: 'A mysterious black card invite arrives inviting you to an ultra-exclusive midnight poker table in an elite Clifton penthouse ($10,000 buy-in).',
     choices: [
       {
@@ -645,7 +667,10 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_trait_speech_or_mind',
     title: 'The Grand University Debate',
     category: 'lifestyle',
-    situation: 'The national public speaking competition is broadcast live on television. Which path do you master?',
+    minAge: 18,
+    requiresAdult: true,
+    requiresUniversityEnrolled: true,
+    situation: 'As a university student, you are selected to lead the national inter-university public speaking championship broadcast live on television. Which path do you master?',
     choices: [
       {
         text: 'Master Charisma & Persuasion',
@@ -736,6 +761,9 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_london_scholarship',
     title: 'UK University Study Visa Offer',
     category: 'visa',
+    minAge: 18,
+    requiresAdult: true,
+    requiresLivingInPakistan: true,
     situation: 'Imperial College London awards you a fast-track admission offer for advanced postgraduate studies in the United Kingdom!',
     choices: [
       {
@@ -780,6 +808,9 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_dubai_work_visa',
     title: 'Dubai Tax-Free Corporate Work Visa',
     category: 'visa',
+    minAge: 21,
+    requiresAdult: true,
+    requiresLivingInPakistan: true,
     situation: 'A prominent Gulf conglomerate in Dubai offers you an executive expatriate work visa with tax-free compensation and luxury housing.',
     choices: [
       {
@@ -829,6 +860,7 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_foreign_metro_bullying',
     title: 'Foreigner Taunts at the Metro Station',
     category: 'visa',
+    requiresLivingAbroad: true,
     situation: 'During your first years living abroad, a rowdy group on the train platform loudly mocks your accent and makes rude xenophobic remarks.',
     choices: [
       {
@@ -868,6 +900,8 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
     id: 'dilemma_foreign_work_prejudice',
     title: 'Workplace Accent & Heritage Bias',
     category: 'visa',
+    requiresLivingAbroad: true,
+    requiresJob: true,
     situation: 'At your new overseas company, a biased colleague condescendingly questions your background and tries to undermine your briefing presentation.',
     choices: [
       {
@@ -1065,6 +1099,135 @@ export const DILEMMAS_DECK: LifeDilemma[] = [
         statEffects: { smarts: 10, karma: 15 },
         reputationChange: 15,
         outcomeText: 'You let the viral wave fade quietly and kept your focus on authentic personal growth.'
+      }
+    ]
+  },
+  {
+    id: 'dilemma_school_spelling_bee',
+    title: 'Inter-School Quiz Bowl & Spelling Bee',
+    category: 'lifestyle',
+    minAge: 7,
+    maxAge: 14,
+    situation: 'Your primary school selects you to represent the class in the televised regional Inter-School Quiz & Spelling Bee Championship!',
+    choices: [
+      {
+        text: 'Study Night & Day for the Championship',
+        description: 'Read the Oxford dictionary and encyclopedias.',
+        tag: 'TRAIT',
+        statEffects: { smarts: 20, happiness: 15 },
+        reputationChange: 35,
+        outcomeText: 'You spelled every word flawlessly and won 1st Place Gold Trophy! The whole school gave you a standing ovation.'
+      },
+      {
+        text: 'Team Up with Classmates & Share the Spotlight',
+        description: 'Form a study circle and support your peers.',
+        tag: 'GOOD',
+        statEffects: { karma: 25, smarts: 15, happiness: 20 },
+        reputationChange: 25,
+        outcomeText: 'Your school team took silver! Your classmates lifted you on their shoulders in pure joy.'
+      },
+      {
+        text: 'Rely on Natural Wits & Confidence',
+        description: 'No cramming needed; trust your instincts.',
+        tag: 'RANDOM',
+        statEffects: { looks: 10, smarts: 10, happiness: 10 },
+        reputationChange: 15,
+        outcomeText: 'You breezed through to the semi-finals with relaxed charisma and had great fun on stage.'
+      },
+      {
+        text: 'Fake a Cough to Stay Home & Play Cricket',
+        description: 'Skip the competition for street sports.',
+        tag: 'RANDOM',
+        statEffects: { health: 10, happiness: 15, karma: -10 },
+        outcomeText: 'You spent the afternoon scoring boundaries in street cricket with neighborhood friends.'
+      }
+    ]
+  },
+  {
+    id: 'dilemma_eid_eidi_savings',
+    title: 'The Blessed Eid Morning Eidi',
+    category: 'lifestyle',
+    minAge: 6,
+    maxAge: 17,
+    situation: 'On Eid-ul-Fitr morning after delicious sheer khurma, visiting elders, uncles, and grandparents gift you crisp new paper bank notes totaling $300 in Eidi!',
+    choices: [
+      {
+        text: 'Deposit in Childhood Savings Piggybank',
+        description: 'Save the money to build future financial discipline.',
+        tag: 'GOOD',
+        cashChange: 300,
+        statEffects: { smarts: 15, karma: 15 },
+        reputationChange: 15,
+        outcomeText: 'You tucked the crisp notes into your locked metal savings tin. Good financial habits start early!'
+      },
+      {
+        text: 'Treat Neighborhood Friends to Kulfi & Treats',
+        description: 'Buy everyone malai kulfi, kites, and fireworks.',
+        tag: 'GOOD',
+        cashChange: -100,
+        statEffects: { karma: 30, happiness: 35 },
+        reputationChange: 20,
+        outcomeText: 'You shared sweets with all the neighborhood kids! Laughter and fireworks filled the street.'
+      },
+      {
+        text: 'Buy a Brand New Cricket Bat & Accessories',
+        description: 'Upgrade your street cricket gear (-$150).',
+        tag: 'RANDOM',
+        cashChange: 150,
+        statEffects: { health: 15, happiness: 25 },
+        reputationChange: 10,
+        outcomeText: 'You bought a gleaming English willow cricket bat! You were named neighborhood team captain.'
+      },
+      {
+        text: 'Donate Half to Orphan Children Welfare',
+        description: 'Share your Eid blessings with those in need.',
+        tag: 'GOOD',
+        cashChange: 150,
+        statEffects: { karma: 50, happiness: 30 },
+        reputationChange: 35,
+        outcomeText: 'Your generous heart brought radiant smiles to disadvantaged children. Elders showered you with heartfelt duas.'
+      }
+    ]
+  },
+  {
+    id: 'dilemma_school_science_project',
+    title: 'The Annual School Science Fair',
+    category: 'lifestyle',
+    minAge: 10,
+    maxAge: 16,
+    situation: 'It is the weekend before the National School Science & Robotics Olympiad. You need to build a breakthrough exhibition display!',
+    choices: [
+      {
+        text: 'Engineer a Solar-Powered Model Vehicle',
+        description: 'Build an eco-friendly automated miniature rover.',
+        tag: 'TRAIT',
+        statEffects: { smarts: 25, happiness: 20 },
+        reputationChange: 40,
+        outcomeText: 'The judges were astonished by your engineering precision! Awarded the Junior Scientist of the Year medal.'
+      },
+      {
+        text: 'Collaborate on a Medical Biology Showcase',
+        description: 'Map human anatomy and plant genetics.',
+        tag: 'CAREER',
+        statEffects: { smarts: 20, karma: 15 },
+        reputationChange: 30,
+        outcomeText: 'Your biology model won 2nd prize! The school principal commended your research dedication.'
+      },
+      {
+        text: 'Build an Explosive Baking Soda Volcano',
+        description: 'Keep it classic, messy, and crowd-pleasing.',
+        tag: 'RANDOM',
+        statEffects: { happiness: 20, looks: 5 },
+        reputationChange: 15,
+        outcomeText: 'Red foam erupted to the ceiling! The entire junior audience cheered with wild delight.'
+      },
+      {
+        text: 'Help Younger Students with Their Projects',
+        description: 'Mentor the junior grades instead of competing.',
+        tag: 'GOOD',
+        statEffects: { karma: 35, happiness: 25 },
+        reputationChange: 25,
+        outcomeText: 'You guided three younger pupils to blue ribbons! Parents praised your leadership and kindness.'
       }
     ]
   }

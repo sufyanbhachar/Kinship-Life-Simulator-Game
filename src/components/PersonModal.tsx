@@ -29,7 +29,7 @@ export const PersonModal: React.FC<PersonModalProps> = ({ contact, onClose }) =>
 
   const current = character.relationships.find((c) => c.id === contact.id) || contact;
 
-  const handleAction = (action: 'chat' | 'gift' | 'vacation' | 'favor' | 'propose' | 'marry' | 'divorce') => {
+  const handleAction = (action: 'chat' | 'gift' | 'vacation' | 'favor' | 'propose' | 'marry' | 'divorce' | 'breakup') => {
     const res = interactContact(current.id, action);
     setFeedback(res.message);
   };
@@ -67,12 +67,17 @@ export const PersonModal: React.FC<PersonModalProps> = ({ contact, onClose }) =>
           />
           <div className="flex-1 min-w-0">
             <div className="meta-label text-[#B8860B] mb-0.5">
-              {current.type} · {getLifeStageLabel(current.age)} (Age {current.age})
+              {current.type === 'Ex-Spouse'
+                ? '💔 Ex-Spouse (Divorced)'
+                : current.type === 'Ex-Partner'
+                ? '💔 Ex-Partner (Broken Up)'
+                : current.type} · {getLifeStageLabel(current.age)} (Age {current.age})
             </div>
             <h3 className="font-grotesk text-2xl font-bold text-[#1C1C1C] flex items-center gap-1.5 truncate">
               <span>{current.name}</span>
               {current.type === 'Spouse' && <span>💍</span>}
               {current.type === 'Child' && <span>👶</span>}
+              {(current.type === 'Ex-Spouse' || current.type === 'Ex-Partner') && <span>💔</span>}
             </h3>
             <div className="text-xs text-[#1C1C1C] opacity-75 mt-1 space-y-0.5">
               <p><strong>Vocation:</strong> {current.occupation}</p>
@@ -81,6 +86,19 @@ export const PersonModal: React.FC<PersonModalProps> = ({ contact, onClose }) =>
             </div>
           </div>
         </div>
+
+        {/* Estranged Ex-Partner / Ex-Spouse Notice */}
+        {(current.type === 'Ex-Spouse' || current.type === 'Ex-Partner') && (
+          <div className="mb-5 p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-950 flex items-start gap-2">
+            <span className="text-sm mt-0.5">💔</span>
+            <div>
+              <strong>{current.type === 'Ex-Spouse' ? 'Former Spouse (Divorced)' : 'Former Dating Partner (Broken Up)'}:</strong>
+              <p className="text-[11px] opacity-85 mt-0.5">
+                You two parted ways and are strictly no longer friends or romantic partners. Luxury vacations and high-society favors are refused.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Vitals Progress Bars */}
         <div className="grid grid-cols-3 gap-3 mb-6 p-4 rounded-lg bg-[#EAE6DF] border border-black/10">
@@ -204,27 +222,38 @@ export const PersonModal: React.FC<PersonModalProps> = ({ contact, onClose }) =>
 
             <button
               onClick={() => handleAction('vacation')}
-              className="btn-v4-outline text-xs py-2.5 px-3 text-center"
+              disabled={current.type === 'Ex-Spouse' || current.type === 'Ex-Partner'}
+              className="btn-v4-outline text-xs py-2.5 px-3 text-center disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Holiday Retreat ($12k)
             </button>
 
             <button
               onClick={() => handleAction('favor')}
-              className="btn-v4-outline text-xs py-2.5 px-3 text-center"
+              disabled={current.type === 'Ex-Spouse' || current.type === 'Ex-Partner'}
+              className="btn-v4-outline text-xs py-2.5 px-3 text-center disabled:opacity-30 disabled:cursor-not-allowed"
             >
               Call in Favor
             </button>
           </div>
 
           {current.type === 'Dating' && (
-            <button
-              onClick={() => handleAction('propose')}
-              className="btn-v4-accent w-full py-3 text-xs tracking-wider font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
-            >
-              <span>💍 Propose Marriage (Nikah)</span>
-              <span className="text-[10px] font-normal opacity-90">· Age 18+ Required</span>
-            </button>
+            <div className="space-y-2 pt-1">
+              <button
+                onClick={() => handleAction('propose')}
+                className="btn-v4-accent w-full py-3 text-xs tracking-wider font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+              >
+                <span>💍 Propose Marriage (Nikah)</span>
+                <span className="text-[10px] font-normal opacity-90">· Age 18+ Required</span>
+              </button>
+
+              <button
+                onClick={() => handleAction('breakup')}
+                className="w-full py-2.5 text-xs text-rose-700 hover:text-rose-900 border border-rose-300 rounded hover:bg-rose-50 transition-colors font-semibold flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span>💔 Break Up with Partner</span>
+              </button>
+            </div>
           )}
 
           {current.type === 'Spouse' && (

@@ -1,89 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useGame } from '../context/GameContext';
-import { Gender, RelationshipContact } from '../types/game';
-import { PAKISTAN_CITIES, generateRandomName, getRandomElement } from '../utils/names';
 import { CharacterAvatar } from './CharacterAvatar';
-import { X, Heart, Sparkles, RefreshCw, Coffee, Utensils, Compass, Palette, ShieldAlert } from 'lucide-react';
+import {
+  getDatingConfigForCity,
+  generateSuitorListForRegion,
+  SuitorProfile
+} from '../data/datingData';
+import { PAKISTAN_CITIES } from '../utils/names';
+import {
+  X,
+  Heart,
+  Sparkles,
+  RefreshCw,
+  Coffee,
+  ShieldAlert,
+  MapPin,
+  AlertTriangle,
+  Lock
+} from 'lucide-react';
 
 interface DatingAppModalProps {
   isOpen: boolean;
   onClose: () => void;
-}
-
-interface SuitorProfile extends RelationshipContact {
-  city: string;
-  bio: string;
-  compatibility: number;
-  education: string;
-}
-
-const MALE_BIOS = [
-  'Software Architect at Careem. 80% chai, 20% code. Looking for someone who never puts elaichi in biryani.',
-  'Corporate litigation advocate. Will defend your honor in court and win every family dawat debate.',
-  'National cricket academy pace bowler. Disciplined on the pitch, gentle off it. Big fan of Nusrat Fateh Ali Khan.',
-  'Textile exporter & industrialist. Splitting time between Faisalabad and Lahore. Loves weekend road trips to Murree.',
-  'Civil Service (PAS) officer. Deep thinker, loves Faiz poetry, vintage fountain pens, and Margalla Hills hiking.',
-  'Fintech founder & amateur squash player. Big ambition, family values, and a weakness for Peshawari chapli kebabs.'
-];
-
-const FEMALE_BIOS = [
-  'Resident Doctor at Shifa International. Passionate about pediatric care, classical ghazals, and Sunday baking.',
-  'Textile & Haute Couture Designer from NCA Lahore. Aesthetic soul, loves vintage truck art and specialty coffee.',
-  'Chartered Accountant & Financial Analyst. Sharp with numbers, warm with family, loves long walks on Clifton beach.',
-  'Broadcast journalist & documentary filmmaker. Curious mind, world traveler, and loves spirited political chai discussions.',
-  'Biotech researcher & nature photographer. Loves exploring northern valleys, starry nights, and quiet reading corners.',
-  'Architectural conservationist. Restoring Old Lahore havelis with modern flair. Seeking someone with genuine humor.'
-];
-
-const EDUCATION_OPTIONS = [
-  'LUMS · B.S. Economics & Finance',
-  'NUST · B.S. Computer Engineering',
-  'King Edward Medical University · MBBS',
-  'National College of Arts (NCA) · B.Des',
-  'IBA Karachi · MBA Business',
-  'Aga Khan University · M.D. Medicine',
-  'Quaid-i-Azam University · M.Phil International Relations',
-  'GIKI · B.S. Mechanical & Robotics'
-];
-
-function generateSuitors(playerGender: Gender, playerAge: number, count = 5): SuitorProfile[] {
-  const targetGender: Gender = playerGender === 'Male' ? 'Female' : 'Male';
-  const bios = targetGender === 'Female' ? FEMALE_BIOS : MALE_BIOS;
-
-  const results: SuitorProfile[] = [];
-  for (let i = 0; i < count; i++) {
-    // Age matched: within -2 to +4 of player's age, min 15
-    const candidateAge = Math.max(15, Math.min(65, Math.round(playerAge + Math.random() * 6 - 2)));
-    const fullName = generateRandomName(targetGender);
-    const city = getRandomElement(PAKISTAN_CITIES);
-    const bio = getRandomElement(bios);
-    const education = getRandomElement(EDUCATION_OPTIONS);
-    const compatibility = Math.floor(Math.random() * 25 + 75); // 75% - 99%
-
-    results.push({
-      id: 'suitor_' + Date.now() + '_' + i + '_' + Math.random().toString(36).substring(2, 6),
-      name: fullName,
-      type: 'Dating',
-      age: candidateAge,
-      gender: targetGender,
-      occupation: getRandomElement([
-        'Software Engineer', 'Pediatrician', 'Textile Designer', 'Corporate Lawyer',
-        'Chartered Accountant', 'Civil Service Officer', 'Architect', 'Media Producer',
-        'Cricket Athlete', 'Biochemist', 'Investment Banker'
-      ]),
-      netWorth: Math.floor(Math.random() * 1500000 + 40000),
-      affection: Math.floor(Math.random() * 20 + 55),
-      respect: Math.floor(Math.random() * 20 + 60),
-      trust: Math.floor(Math.random() * 20 + 50),
-      personality: getRandomElement(['Loyal', 'Ambitious', 'Sophisticated', 'Playful']),
-      avatarSeed: Math.floor(Math.random() * 10000),
-      city,
-      bio,
-      compatibility,
-      education
-    });
-  }
-  return results;
+  preferredAppId?: string; // Optional if opened specifically for DilMil or international
 }
 
 export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose }) => {
@@ -92,13 +31,19 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [feedback, setFeedback] = useState<string | null>(null);
 
+  const inPakistan = PAKISTAN_CITIES.some((pk) => character.city.includes(pk)) || character.city.toLowerCase().includes('pakistan');
+  const regionConfig = getDatingConfigForCity(character.city);
+
+  const spouses = character.relationships.filter((r) => r.type === 'Spouse');
+  const isMarried = spouses.length > 0;
+
   useEffect(() => {
     if (isOpen && character.age >= 15) {
-      setSuitors(generateSuitors(character.gender, character.age, 6));
+      setSuitors(generateSuitorListForRegion(regionConfig, character.gender, character.age, 6));
       setCurrentIndex(0);
       setFeedback(null);
     }
-  }, [isOpen, character.gender, character.age]);
+  }, [isOpen, character.gender, character.age, character.city]);
 
   if (!isOpen) return null;
 
@@ -110,8 +55,8 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
     if (currentIndex < suitors.length - 1) {
       setCurrentIndex(currentIndex + 1);
     } else {
-      // Regenerate fresh suitors
-      setSuitors(generateSuitors(character.gender, character.age, 6));
+      // Regenerate fresh suitors for region
+      setSuitors(generateSuitorListForRegion(regionConfig, character.gender, character.age, 6));
       setCurrentIndex(0);
     }
   };
@@ -120,49 +65,29 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
     if (!currentSuitor) return;
     const res = addDatingContact(
       currentSuitor,
-      `Matched on DilMil Dating App with ${currentSuitor.name} (${currentSuitor.occupation}) from ${currentSuitor.city}!`,
+      `Matched on ${regionConfig.appName} with ${currentSuitor.name} (${currentSuitor.occupation}) from ${currentSuitor.city}!`,
       0
     );
     setFeedback(res.message);
     setTimeout(() => {
       handleNext();
-    }, 1200);
+    }, 1500);
   };
 
-  const handleTakeOnDate = (dateType: 'chai' | 'monal' | 'beach' | 'gallery') => {
+  const handleTakeOnDate = (spot: { id: string; label: string; cost: number; bonusAffection: number; description: string }) => {
     if (!currentSuitor) return;
-    let cost = 0;
-    let story = '';
-    let bonusAffection = 10;
 
-    if (dateType === 'chai') {
-      cost = 60;
-      bonusAffection = 15;
-      story = `Took ${currentSuitor.name} on a first date for karak chai and steaming parathas at Chaaye Khana. Shared endless laughter!`;
-    } else if (dateType === 'monal') {
-      cost = 300;
-      bonusAffection = 25;
-      story = `Took ${currentSuitor.name} on a lavish candlelit dinner overlooking the glittering lights of Islamabad from Monal Margalla Hills. Unforgettable chemistry!`;
-    } else if (dateType === 'beach') {
-      cost = 30;
-      bonusAffection = 12;
-      story = `Walked along the Arabian Sea shoreline at Clifton Beach with ${currentSuitor.name}, enjoying camel rides and roasted corn.`;
-    } else if (dateType === 'gallery') {
-      cost = 180;
-      bonusAffection = 20;
-      story = `Took ${currentSuitor.name} to a contemporary art gallery and high tea in Gulberg, Lahore. Deep intellectual spark!`;
-    }
-
-    const updated = {
+    const updated: SuitorProfile = {
       ...currentSuitor,
-      affection: Math.min(100, currentSuitor.affection + bonusAffection)
+      affection: Math.min(100, currentSuitor.affection + spot.bonusAffection)
     };
 
-    const res = addDatingContact(updated, story, cost);
+    const story = `Took ${currentSuitor.name} on a date in ${currentSuitor.city}: ${spot.label}. ${spot.description}`;
+    const res = addDatingContact(updated, story, spot.cost);
     setFeedback(res.message);
     setTimeout(() => {
       handleNext();
-    }, 1400);
+    }, 1800);
   };
 
   return (
@@ -171,20 +96,20 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
         {/* App Title Bar */}
         <div className="flex items-center justify-between border-b border-black/10 pb-4 mb-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-pink-600 via-rose-500 to-amber-400 flex items-center justify-center shadow-sm text-white font-bold text-lg">
+            <div className={`w-10 h-10 rounded-xl bg-gradient-to-tr ${regionConfig.brandColor} flex items-center justify-center shadow-sm text-white font-bold text-lg`}>
               <Heart className="w-5 h-5 fill-white text-white" />
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <h3 className="font-grotesk text-xl font-bold tracking-tight text-[#1C1C1C]">
-                  DilMil · Kinship Match
+                  {regionConfig.tagline}
                 </h3>
                 <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-pink-100 text-pink-700 border border-pink-200">
-                  Pakistani Rishta &amp; Dating
+                  {regionConfig.badge}
                 </span>
               </div>
               <p className="text-[11px] text-[#1C1C1C] opacity-70">
-                Opposite-gender matrimonial &amp; courtship platform
+                {regionConfig.subTitle} · Current Location: <strong>{character.city}</strong>
               </p>
             </div>
           </div>
@@ -197,6 +122,37 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
           </button>
         </div>
 
+        {/* Region Lock Notice if living abroad: DilMil paused */}
+        {!inPakistan && (
+          <div className="mb-4 p-3 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-950 flex items-start gap-2">
+            <MapPin className="w-4 h-4 text-indigo-600 shrink-0 mt-0.5" />
+            <div>
+              <div className="flex items-center gap-1.5 font-bold">
+                <span>International Dating Unlocked ({regionConfig.appName})</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 bg-rose-100 text-rose-800 rounded border border-rose-200">
+                  DilMil Paused (Region-Locked)
+                </span>
+              </div>
+              <p className="text-[11px] opacity-80 mt-0.5">
+                Since you relocated abroad to <strong>{character.city}</strong>, Pakistan-only DilMil services have stopped. You are browsing verified local international suitors in {regionConfig.region}.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Marital Warning Banner if Married */}
+        {isMarried && (
+          <div className="mb-4 p-3 rounded-lg bg-amber-50 border border-amber-300 text-xs text-amber-950 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+            <div>
+              <strong className="font-bold text-amber-900">Marital Infidelity Warning:</strong>
+              <p className="text-[11px] opacity-90 mt-0.5">
+                You are currently married to <strong>{spouses.map(s => s.name).join(', ')}</strong>. Courting or matching on dating apps will spark severe domestic outrage, heartbreak, and affection collapse if discovered!
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Underage Lock Condition (<15) */}
         {isUnderage ? (
           <div className="p-8 text-center space-y-4 my-auto">
@@ -208,7 +164,7 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
                 Underage Security Lock
               </h4>
               <p className="text-xs text-[#1C1C1C] opacity-75 mt-1.5 max-w-sm mx-auto leading-relaxed">
-                You are currently <strong>Age {character.age}</strong>. Kinship family laws and DilMil guidelines require users to be at least <strong>15 years old</strong> to begin dating.
+                You are currently <strong>Age {character.age}</strong>. Family laws and {regionConfig.appName} safety guidelines strictly require users to be at least <strong>15 years old</strong> to begin dating.
               </p>
               <div className="mt-4 p-3 rounded-md bg-[#EAE6DF] text-[11px] text-[#1C1C1C] font-medium inline-block">
                 Focus on school, street cricket, family bonding, and childhood development!
@@ -258,7 +214,7 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
                       <span>·</span>
                       <span>{currentSuitor.gender}</span>
                       <span>·</span>
-                      <span className="opacity-80">{currentSuitor.city}, Pakistan</span>
+                      <span className="opacity-80">{currentSuitor.city}, {currentSuitor.country}</span>
                     </div>
 
                     <p className="text-xs text-[#1C1C1C] opacity-75 mt-1 font-medium">
@@ -291,59 +247,26 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
                   </div>
                 </div>
 
-                {/* First Date Invitations Grid */}
+                {/* First Date Invitations Grid based on Region */}
                 <div>
                   <label className="meta-label text-[#B8860B] block mb-2">
-                    Invite on an Authentic Pakistani First Date
+                    Invite on a {regionConfig.region} First Date
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      onClick={() => handleTakeOnDate('chai')}
-                      disabled={character.cash < 60}
-                      className="p-2.5 rounded-lg border border-black/10 bg-[#FAF8F5] hover:bg-amber-50 hover:border-amber-300 text-left transition-all cursor-pointer disabled:opacity-40"
-                    >
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#1C1C1C]">
-                        <Coffee className="w-3.5 h-3.5 text-amber-700" />
-                        <span>Chai &amp; Paratha ($60)</span>
-                      </div>
-                      <span className="text-[10px] opacity-70 block mt-0.5">Chaaye Khana meetup</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleTakeOnDate('monal')}
-                      disabled={character.cash < 300}
-                      className="p-2.5 rounded-lg border border-black/10 bg-[#FAF8F5] hover:bg-rose-50 hover:border-rose-300 text-left transition-all cursor-pointer disabled:opacity-40"
-                    >
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#1C1C1C]">
-                        <Utensils className="w-3.5 h-3.5 text-rose-600" />
-                        <span>Monal Dinner ($300)</span>
-                      </div>
-                      <span className="text-[10px] opacity-70 block mt-0.5">Margalla Hills view</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleTakeOnDate('beach')}
-                      disabled={character.cash < 30}
-                      className="p-2.5 rounded-lg border border-black/10 bg-[#FAF8F5] hover:bg-cyan-50 hover:border-cyan-300 text-left transition-all cursor-pointer disabled:opacity-40"
-                    >
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#1C1C1C]">
-                        <Compass className="w-3.5 h-3.5 text-cyan-600" />
-                        <span>Clifton Beach ($30)</span>
-                      </div>
-                      <span className="text-[10px] opacity-70 block mt-0.5">Sunset sea stroll</span>
-                    </button>
-
-                    <button
-                      onClick={() => handleTakeOnDate('gallery')}
-                      disabled={character.cash < 180}
-                      className="p-2.5 rounded-lg border border-black/10 bg-[#FAF8F5] hover:bg-purple-50 hover:border-purple-300 text-left transition-all cursor-pointer disabled:opacity-40"
-                    >
-                      <div className="flex items-center gap-1.5 text-xs font-bold text-[#1C1C1C]">
-                        <Palette className="w-3.5 h-3.5 text-purple-600" />
-                        <span>Art &amp; High Tea ($180)</span>
-                      </div>
-                      <span className="text-[10px] opacity-70 block mt-0.5">Gulberg gallery tour</span>
-                    </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {regionConfig.dateSpots.map((spot) => (
+                      <button
+                        key={spot.id}
+                        onClick={() => handleTakeOnDate(spot)}
+                        disabled={character.cash < spot.cost}
+                        className="p-2.5 rounded-lg border border-black/10 bg-[#FAF8F5] hover:bg-amber-50 hover:border-amber-300 text-left transition-all cursor-pointer disabled:opacity-40"
+                      >
+                        <div className="flex items-center justify-between text-xs font-bold text-[#1C1C1C]">
+                          <span className="truncate pr-1">{spot.label}</span>
+                          <span className="font-mono text-[#B8860B] shrink-0">${spot.cost}</span>
+                        </div>
+                        <span className="text-[10px] opacity-70 block mt-0.5 line-clamp-1">{spot.description}</span>
+                      </button>
+                    ))}
                   </div>
                 </div>
 
@@ -358,7 +281,7 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
 
                   <button
                     onClick={handleSwipeRight}
-                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white font-grotesk text-xs font-bold shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                    className={`w-full py-3 px-4 rounded-xl bg-gradient-to-r ${regionConfig.brandColor} text-white font-grotesk text-xs font-bold shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:opacity-95`}
                   >
                     <Heart className="w-4 h-4 fill-white" />
                     <span>Swipe Right · Start Dating</span>
@@ -370,7 +293,7 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
                 <p className="text-xs text-[#1C1C1C] opacity-75">No more suitors in this stack.</p>
                 <button
                   onClick={() => {
-                    setSuitors(generateSuitors(character.gender, character.age, 6));
+                    setSuitors(generateSuitorListForRegion(regionConfig, character.gender, character.age, 6));
                     setCurrentIndex(0);
                   }}
                   className="btn-v4-accent text-xs mt-3 px-4 py-2"
@@ -383,12 +306,12 @@ export const DatingAppModal: React.FC<DatingAppModalProps> = ({ isOpen, onClose 
 
             {/* Bottom Footer Info */}
             <div className="flex items-center justify-between text-[11px] text-[#1C1C1C] opacity-70 pt-2 border-t border-black/10">
-              <span>Candidate {currentIndex + 1} of {suitors.length}</span>
+              <span>Candidate {currentIndex + 1} of {suitors.length} ({regionConfig.appName})</span>
               <button
                 onClick={() => {
-                  setSuitors(generateSuitors(character.gender, character.age, 6));
+                  setSuitors(generateSuitorListForRegion(regionConfig, character.gender, character.age, 6));
                   setCurrentIndex(0);
-                  setFeedback('Loaded new batch of verified suitors!');
+                  setFeedback(`Loaded new batch of verified suitors in ${regionConfig.region}!`);
                 }}
                 className="hover:text-[#B8860B] font-semibold flex items-center gap-1 cursor-pointer"
               >

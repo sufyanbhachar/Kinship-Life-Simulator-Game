@@ -26,7 +26,7 @@ import { ARTS_CONFIG } from '../data/artsData';
 import { BUSINESS_BLUEPRINTS } from '../data/businessData';
 import { SOCIAL_TIERS, INITIAL_CLUBS, REAL_ESTATE_CATALOG, LUXURY_TOYS_CATALOG } from '../data/societyData';
 import { DILEMMAS_DECK } from '../data/dilemmasData';
-import { generateNPC, generateRandomName, generateBabyName, getRandomElement } from '../utils/names';
+import { generateNPC, generateRandomName, generateBabyName, getRandomElement, isPakistaniCity } from '../utils/names';
 import { sounds } from '../utils/sound';
 
 interface NewGameParams {
@@ -96,6 +96,78 @@ function calculateSocialTier(reputation: number, netWorth: number): SocialTier {
   }
   return 'Working Class';
 }
+
+export const VALID_DEGREES_FOR_FIELD: Record<CorporateField, string[]> = {
+  Tech: ['B.S. Computer Science', 'B.S. Data Science & AI', 'B.Eng. Mechanical & Electrical', 'Ph.D. Advanced Scientific Research'],
+  Finance: ['B.S. Economics & Finance', 'Chartered Accountancy (CA / ACCA)', 'MBA Business'],
+  Medicine: ['M.D. Medicine'],
+  Law: ['J.D. Law'],
+  Civil_Service: [
+    'B.S. Computer Science', 'B.S. Economics & Finance', 'B.A. Literature & Arts',
+    'B.Eng. Mechanical & Electrical', 'B.Arch Architecture & Design', 'B.S. Data Science & AI',
+    'Chartered Accountancy (CA / ACCA)', 'M.D. Medicine', 'J.D. Law', 'MBA Business',
+    'M.Phil International Relations', 'Ph.D. Advanced Scientific Research'
+  ],
+  Media_Arts: ['B.A. Literature & Arts', 'B.Arch Architecture & Design', 'M.Phil International Relations'],
+  Aviation_Defense: ['B.Eng. Mechanical & Electrical', 'High School Diploma', 'Matric / High School'],
+  Corporate_Industry: ['MBA Business', 'B.S. Economics & Finance', 'B.Eng. Mechanical & Electrical', 'Chartered Accountancy (CA / ACCA)'],
+  Armed_Forces: ['High School Diploma', 'Matric / High School', 'B.S. Computer Science', 'B.Eng. Mechanical & Electrical'],
+  Underworld_Crime: []
+};
+
+function isDilemmaEligible(d: LifeDilemma, char: CharacterState, targetAge: number): boolean {
+  // 1. Min / Max Age
+  if (d.minAge && targetAge < d.minAge) return false;
+  if (d.maxAge && targetAge > d.maxAge) return false;
+  if (d.requiresAdult && targetAge < 18) return false;
+
+  // 2. Job offers: strictly NEVER before 18
+  const hasJobOffer = d.choices.some((c) => c.jobOffer || c.tag === 'JOB');
+  if (hasJobOffer && targetAge < 18) return false;
+
+  // 3. Marriage / Rishta proposals: strictly NEVER before 18
+  const isMarriageProposal = d.id === 'dilemma_unexpected_rishta' || d.title.toLowerCase().includes('rishta') || d.title.toLowerCase().includes('marriage');
+  if (isMarriageProposal && targetAge < 18) return false;
+
+  // 4. Dating candidate: strictly NEVER before 15
+  const hasDateCandidate = d.choices.some((c) => c.dateCandidate || c.tag === 'DATE');
+  if (hasDateCandidate && targetAge < 15) return false;
+
+  // 5. University enrollment requirement (e.g. university debate): player must be enrolled in university degree
+  if (d.requiresUniversityEnrolled) {
+    const isEnrolled = Boolean(char.education.inProgress && char.education.inProgress.yearsRemaining > 0);
+    if (!isEnrolled) return false;
+  }
+
+  // 6. Degree field matching for career dilemmas
+  if (d.requiresDegreeField) {
+    const allowed = VALID_DEGREES_FOR_FIELD[d.requiresDegreeField];
+    if (allowed && allowed.length > 0 && !allowed.includes(char.education.degree)) {
+      return false;
+    }
+  }
+
+  // Also verify that any jobOffer in the dilemma is compatible with the character's degree
+  for (const choice of d.choices) {
+    if (choice.jobOffer) {
+      const allowed = VALID_DEGREES_FOR_FIELD[choice.jobOffer.field];
+      if (allowed && allowed.length > 0 && !allowed.includes(char.education.degree)) {
+        return false;
+      }
+    }
+  }
+
+  // 7. Location requirements
+  const inPak = isPakistaniCity(char.city);
+  if (d.requiresLivingInPakistan && !inPak) return false;
+  if (d.requiresLivingAbroad && inPak) return false;
+
+  // 8. Job requirement
+  if (d.requiresJob && (!char.corporateJob && !char.sportsCareer)) return false;
+
+  return true;
+}
+
 
 function createInitialCharacter(params: NewGameParams): CharacterState {
   let startingCash = 3500;
@@ -509,18 +581,54 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Corporate Career Actions
   const applyCorporateJob = useCallback((field: CorporateField, rank: number) => {
+    if (character.age < 18) {
+      sounds.playWarning();
+      return { success: false, message: 'You must be at least 18 years old to start a corporate career (High School diploma required).' };
+    }
+
+    if (character.education.inProgress) {
+      sounds.playWarning();
+      return {
+        success: false,
+        message: `Application rejected: You are currently enrolled as a student pursuing ${character.education.inProgress.degree}! You must graduate university before entering full-time corporate vocations.`
+      };
+    }
+
     const ladder = CORPORATE_LADDER[field];
     const jobTemplate = ladder.find((j) => j.rank === rank);
     if (!jobTemplate) return { success: false, message: 'Position not found.' };
+
+    // Degree discipline validation
+    const allowedDegrees = VALID_DEGREES_FOR_FIELD[field];
+    if (allowedDegrees.length > 0 && !allowedDegrees.includes(character.education.degree)) {
+      sounds.playWarning();
+      return {
+        success: false,
+        message: `Application rejected: Your degree in "${character.education.degree}" is not in this discipline! ${field} careers strictly require a relevant qualification (such as ${allowedDegrees.slice(0, 2).join(' or ')}).`
+      };
+    }
+
+    if (jobTemplate.requiredDegree && character.education.degree !== jobTemplate.requiredDegree) {
+      sounds.playWarning();
+      return { success: false, message: `Application rejected: Requires a ${jobTemplate.requiredDegree}.` };
+    }
 
     if (character.stats.smarts < jobTemplate.minSmarts) {
       sounds.playWarning();
       return { success: false, message: `The interview board found your qualifications lacking (requires ${jobTemplate.minSmarts} Smarts).` };
     }
 
-    if (jobTemplate.requiredDegree && character.education.degree !== jobTemplate.requiredDegree) {
-      sounds.playWarning();
-      return { success: false, message: `Application rejected: Requires a ${jobTemplate.requiredDegree}.` };
+    // Rank progression check: cannot jump straight to senior executive without climbing
+    if (rank > 1) {
+      const isSameField = character.corporateJob?.field === field;
+      const currentRank = (isSameField && character.corporateJob) ? character.corporateJob.rank : 0;
+      if (currentRank < rank - 1) {
+        sounds.playWarning();
+        return {
+          success: false,
+          message: `Application rejected: You cannot apply directly to Rank ${rank} without advancing through Rank ${rank - 1} and obtaining ${jobTemplate.minExperience} years of experience in ${field}.`
+        };
+      }
     }
 
     const newJob: CorporateJob = {
@@ -991,7 +1099,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [character.businesses, addLifeLog]);
 
   // Relationship Interactions
-  const interactContact = useCallback((contactId: string, action: 'chat' | 'gift' | 'vacation' | 'favor' | 'propose' | 'marry' | 'divorce') => {
+  const interactContact = useCallback((contactId: string, action: 'chat' | 'gift' | 'vacation' | 'favor' | 'propose' | 'marry' | 'divorce' | 'breakup') => {
     const contact = character.relationships.find((c) => c.id === contactId);
     if (!contact) return { success: false, message: 'Contact not found.' };
 
@@ -1002,7 +1110,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       let repDelta = 0;
       const stats = { ...prev.stats };
 
-      const updatedRelationships = prev.relationships.map((c) => {
+      let updatedRelationships = prev.relationships.map((c) => {
         if (c.id !== contactId) return c;
         const target = { ...c };
 
@@ -1075,37 +1183,65 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
           target.type = 'Spouse';
           target.marriedToPlayer = true;
           repDelta = 35;
-          stats.happiness = 100;
           const wifeIndex = existingSpouses.length + 1;
-          outcomeMsg = prev.gender === 'Male'
-            ? `PROPOSAL ACCEPTED! ${target.name} happily accepted your marriage proposal! (Wife #${wifeIndex}).`
-            : `PROPOSAL ACCEPTED! ${target.name} happily accepted your marriage proposal! You are now legally married.`;
+
+          if (existingSpouses.length > 0) {
+            stats.happiness = Math.max(20, stats.happiness - 20);
+            stats.karma = Math.max(0, stats.karma - 15);
+            outcomeMsg = `PROPOSAL ACCEPTED! ${target.name} accepted your marriage proposal (Wife #${wifeIndex}). However, your existing wife/wives (${existingSpouses.map(s => s.name).join(', ')}) are deeply heartbroken, furious, and enraged by the co-wife marriage! Domestic strife exploded at home.`;
+          } else {
+            stats.happiness = 100;
+            outcomeMsg = prev.gender === 'Male'
+              ? `PROPOSAL ACCEPTED! ${target.name} happily accepted your marriage proposal! (Wife #${wifeIndex}).`
+              : `PROPOSAL ACCEPTED! ${target.name} happily accepted your marriage proposal! You are now legally married.`;
+          }
         } else if (action === 'divorce') {
           if (target.type !== 'Spouse') {
             outcomeMsg = 'You are not married to this person!';
             return c;
           }
-          target.type = 'Friend';
+          target.type = 'Ex-Spouse';
           target.marriedToPlayer = false;
-          target.affection = 20;
+          target.affection = 5;
+          target.trust = 5;
+          target.respect = Math.max(5, target.respect - 40);
           // Asset division
           const split = Math.round(prev.cash * 0.35);
           cashDelta = -split;
           stats.happiness = Math.max(0, stats.happiness - 25);
-          outcomeMsg = `Divorced ${target.name}. Marital settlement divided $${split.toLocaleString()} in liquid assets.`;
+          outcomeMsg = `Divorced ${target.name}. They are now your Ex-Spouse. Marital settlement divided $${split.toLocaleString()} in liquid assets.`;
         } else if (action === 'breakup') {
           if (target.type !== 'Dating') {
             outcomeMsg = 'You are not currently dating this person!';
             return c;
           }
-          target.type = 'Friend';
-          target.affection = Math.max(10, target.affection - 35);
+          target.type = 'Ex-Partner';
+          target.affection = 10;
+          target.trust = 10;
           stats.happiness = Math.max(0, stats.happiness - 12);
-          outcomeMsg = `Ended romantic relationship with ${target.name}. You parted ways as friends.`;
+          outcomeMsg = `Ended romantic relationship with ${target.name}. They are now your Ex-Partner.`;
         }
 
         return target;
       });
+
+      // If marrying an additional wife, reduce affection/trust of all existing wives!
+      if (action === 'propose') {
+        const existingSpouses = prev.relationships.filter((r) => r.type === 'Spouse');
+        if (existingSpouses.length > 0) {
+          updatedRelationships = updatedRelationships.map((c) => {
+            if (c.type === 'Spouse' && c.id !== contactId) {
+              return {
+                ...c,
+                affection: Math.max(5, c.affection - 40),
+                trust: Math.max(5, c.trust - 45),
+                respect: Math.max(5, c.respect - 30)
+              };
+            }
+            return c;
+          });
+        }
+      }
 
       return {
         ...prev,
@@ -1119,9 +1255,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
     });
 
+    if (action === 'propose') {
+      const existingSpouses = character.relationships.filter((r) => r.type === 'Spouse');
+      if (existingSpouses.length > 0) {
+        addLifeLog(`Married ${contact.name}. Existing wife/wives (${existingSpouses.map(s => s.name).join(', ')}) were devastated and furious! Major domestic uproar.`, 'relationship', 'negative');
+      }
+    } else if (action === 'divorce') {
+      addLifeLog(`Divorced ${contact.name}. They are now your Ex-Spouse.`, 'relationship', 'negative');
+    } else if (action === 'breakup') {
+      addLifeLog(`Broke up with dating partner ${contact.name}. They are now your Ex-Partner.`, 'relationship', 'neutral');
+    }
+
     sounds.playClick();
     return { success: true, message: outcomeMsg };
-  }, [character.relationships]);
+  }, [character.relationships, addLifeLog]);
 
   // Make New Friend (Friends appear more frequently than romantic dates)
   const makeNewFriend = useCallback(() => {
@@ -1165,19 +1312,48 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const targetGender: Gender = character.gender === 'Male' ? 'Female' : 'Male';
     const candidate = generateNPC('Dating', character.age, tierToMeet, undefined, targetGender);
 
-    setCharacter((prev) => ({
-      ...prev,
-      relationships: [...prev.relationships, candidate],
-      stats: {
-        ...prev.stats,
-        energy: Math.max(0, prev.stats.energy - 20),
-        happiness: Math.min(100, prev.stats.happiness + 8)
+    const existingSpouses = character.relationships.filter((r) => r.type === 'Spouse');
+    const spouseFoundGossip = existingSpouses.length > 0 && Math.random() < 0.65;
+
+    setCharacter((prev) => {
+      let updatedRels = [...prev.relationships, candidate];
+      const updatedStats = { ...prev.stats };
+
+      if (spouseFoundGossip) {
+        updatedRels = updatedRels.map((c) => {
+          if (c.type !== 'Spouse') return c;
+          return {
+            ...c,
+            affection: Math.max(5, c.affection - 30),
+            trust: Math.max(5, c.trust - 35)
+          };
+        });
+        updatedStats.happiness = Math.max(0, updatedStats.happiness - 12);
+        updatedStats.karma = Math.max(0, updatedStats.karma - 10);
       }
-    }));
+
+      return {
+        ...prev,
+        relationships: updatedRels,
+        stats: {
+          ...updatedStats,
+          energy: Math.max(0, prev.stats.energy - 20),
+          happiness: Math.min(100, updatedStats.happiness + 8)
+        }
+      };
+    });
+
+    if (spouseFoundGossip) {
+      addLifeLog(`Scandal! Rumors reached your wife/wives (${existingSpouses.map(s => s.name).join(', ')}) that you were courting suitors at parties! Domestic fury erupted.`, 'relationship', 'negative');
+    }
 
     addLifeLog(`Met ${candidate.name} (${candidate.occupation}) at a social gathering and began dating!`, 'relationship', 'positive');
     sounds.playClick();
-    return { success: true, message: `Connected with ${candidate.name}! They have been added to your relationships.`, candidate };
+    return {
+      success: true,
+      message: `Connected with ${candidate.name}! They have been added to your relationships.${spouseFoundGossip ? ' ⚠️ Your spouse caught wind of your courting and is furious!' : ''}`,
+      candidate
+    };
   }, [character, addLifeLog]);
 
   // Add dating contact directly from Dating App with optional date story, cost, and jealousy check
@@ -1191,15 +1367,32 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { success: false, message: `You need $${dateCost.toLocaleString()} to pay for this date!` };
     }
 
-    // Check if other dating partners find out and get angry!
+    // Check if spouses or other dates find out and get angry!
+    const existingSpouses = character.relationships.filter((r) => r.type === 'Spouse');
     const existingDates = character.relationships.filter((r) => r.type === 'Dating' && r.id !== contact.id);
     let jealousyWarning = '';
+
+    const wifeFoundOut = existingSpouses.length > 0 && Math.random() < 0.85; // 85% chance wife finds out about date!
     const otherDateFoundOut = existingDates.length >= 1 && Math.random() < 0.55;
     let angryDateName = '';
 
     setCharacter((prev) => {
       let updatedRel = [contact, ...prev.relationships.filter((c) => c.id !== contact.id)];
       const updatedStats = { ...prev.stats };
+
+      if (wifeFoundOut) {
+        updatedRel = updatedRel.map((c) => {
+          if (c.type !== 'Spouse') return c;
+          return {
+            ...c,
+            affection: Math.max(5, c.affection - 45),
+            trust: Math.max(5, c.trust - 50),
+            respect: Math.max(5, c.respect - 30)
+          };
+        });
+        updatedStats.happiness = Math.max(0, updatedStats.happiness - 20);
+        updatedStats.karma = Math.max(0, updatedStats.karma - 15);
+      }
 
       if (otherDateFoundOut) {
         const angryTarget = getRandomElement(existingDates);
@@ -1222,17 +1415,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         relationships: updatedRel,
         stats: {
           ...updatedStats,
-          happiness: Math.min(100, updatedStats.happiness + (otherDateFoundOut ? -5 : 15)),
+          happiness: Math.min(100, updatedStats.happiness + (wifeFoundOut ? -15 : otherDateFoundOut ? -5 : 15)),
           energy: Math.max(0, prev.stats.energy - 10)
         }
       };
     });
 
-    const logText = dateStory || `Matched on DilMil Dating App with ${contact.name} (${contact.occupation}) and began dating!`;
+    const appName = isPakistaniCity(character.city) ? 'DilMil Dating App' : 'Tinder Global';
+    const logText = dateStory || `Matched on ${appName} with ${contact.name} (${contact.occupation}) and began dating!`;
     addLifeLog(logText, 'relationship', 'positive');
 
+    if (wifeFoundOut) {
+      jealousyWarning += ` ⚠️ MARITAL SCANDAL! Your wife/wives (${existingSpouses.map(s => s.name).join(', ')}) discovered you dating ${contact.name}! She is furious, heartbroken, and exploded in rage! Affection & Trust collapsed.`;
+      addLifeLog(`Infidelity scandal! Your wife/wives (${existingSpouses.map(s => s.name).join(', ')}) caught you dating ${contact.name}! Massive domestic crisis erupted.`, 'relationship', 'negative');
+    }
+
     if (otherDateFoundOut && angryDateName) {
-      jealousyWarning = ` ⚠️ JEALOUSY SCANDAL! Your other date ${angryDateName} spotted you with ${contact.name} and is furious! Affection plummeted.`;
+      jealousyWarning += ` ⚠️ JEALOUSY SCANDAL! Your other date ${angryDateName} spotted you with ${contact.name} and is furious! Affection plummeted.`;
       addLifeLog(`Scandal! ${angryDateName} caught you dating ${contact.name} and angrily confronted you!`, 'relationship', 'negative');
     }
 
@@ -1241,7 +1440,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       success: true,
       message: `Matched with ${contact.name}! They have been added to your relationships as your dating partner.${jealousyWarning}`
     };
-  }, [character.age, character.cash, character.relationships, addLifeLog]);
+  }, [character.age, character.cash, character.relationships, character.city, addLifeLog]);
 
   // Childbirth (Baby Born)
   // Rules:
@@ -1580,7 +1779,23 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else if (choice.tag === 'DATE') {
         const targetGender = prev.gender === 'Male' ? 'Female' : 'Male';
         const suitor = generateNPC('Dating', prev.age, 'elite', undefined, targetGender);
-        updatedRelationships = [suitor, ...prev.relationships];
+        const existingSpouses = prev.relationships.filter((r) => r.type === 'Spouse');
+        if (existingSpouses.length > 0) {
+          updatedRelationships = [
+            suitor,
+            ...prev.relationships.map((c) => {
+              if (c.type !== 'Spouse') return c;
+              return {
+                ...c,
+                affection: Math.max(5, c.affection - 40),
+                trust: Math.max(5, c.trust - 45)
+              };
+            })
+          ];
+          stats.happiness = Math.max(0, stats.happiness - 15);
+        } else {
+          updatedRelationships = [suitor, ...prev.relationships];
+        }
       }
 
       const updatedCity = choice.relocateTo || prev.city;
@@ -1912,30 +2127,38 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Frequent Emergent Dilemma Trigger (~80% chance every year from age 6+)
     const nextAge = character.age + 1;
     if (nextAge >= 6 && Math.random() < 0.82) {
-      let chosenDilemma: LifeDilemma;
-      const hasJob = character.corporateJob !== null || character.sportsCareer !== null;
-      const hasPartner = character.relationships.some((r) => r.type === 'Dating' || r.type === 'Spouse');
+      const eligibleDeck = DILEMMAS_DECK.filter((d) => isDilemmaEligible(d, character, nextAge));
+      if (eligibleDeck.length > 0) {
+        let chosenDilemma: LifeDilemma;
+        const hasJob = character.corporateJob !== null || character.sportsCareer !== null;
+        const hasPartner = character.relationships.some((r) => r.type === 'Dating' || r.type === 'Spouse');
 
-      // Context 1: Adult with no job (prioritize career/job/forces/syndicate offers)
-      if (nextAge >= 18 && !hasJob && Math.random() < 0.65) {
-        const careerPool = DILEMMAS_DECK.filter((d) => d.category === 'career');
-        chosenDilemma = (careerPool.length > 0 ? getRandomElement(careerPool) : null) || getRandomElement(DILEMMAS_DECK);
-      }
-      // Context 2: Teen/adult with no dating partner (prioritize romance proposals)
-      else if (nextAge >= 15 && !hasPartner && Math.random() < 0.60) {
-        const romancePool = DILEMMAS_DECK.filter((d) => d.category === 'romance');
-        chosenDilemma = (romancePool.length > 0 ? getRandomElement(romancePool) : null) || getRandomElement(DILEMMAS_DECK);
-      }
-      // General rich deck
-      else {
-        chosenDilemma = getRandomElement(DILEMMAS_DECK);
-      }
+        // Context 1: Adult with no job (prioritize eligible career/forces offers)
+        if (nextAge >= 18 && !hasJob && Math.random() < 0.65) {
+          const careerPool = eligibleDeck.filter((d) => d.category === 'career');
+          chosenDilemma = (careerPool.length > 0 ? getRandomElement(careerPool) : null) || getRandomElement(eligibleDeck);
+        }
+        // Context 2: Teen/adult with no dating partner (prioritize eligible romance/courtship)
+        else if (nextAge >= 15 && !hasPartner && Math.random() < 0.60) {
+          const romancePool = eligibleDeck.filter((d) => d.category === 'romance');
+          chosenDilemma = (romancePool.length > 0 ? getRandomElement(romancePool) : null) || getRandomElement(eligibleDeck);
+        }
+        // Context 3: Active university student (chance of university debate/academic dilemma)
+        else if (character.education.inProgress && Math.random() < 0.50) {
+          const uniPool = eligibleDeck.filter((d) => d.requiresUniversityEnrolled);
+          chosenDilemma = (uniPool.length > 0 ? getRandomElement(uniPool) : null) || getRandomElement(eligibleDeck);
+        }
+        // General eligible deck
+        else {
+          chosenDilemma = getRandomElement(eligibleDeck);
+        }
 
-      setTimeout(() => {
-        setActiveDilemma(chosenDilemma);
-      }, 350);
+        setTimeout(() => {
+          setActiveDilemma(chosenDilemma);
+        }, 350);
+      }
     }
-  }, [character.isAlive, character.age, character.corporateJob, character.sportsCareer, character.relationships]);
+  }, [character.isAlive, character.age, character.corporateJob, character.sportsCareer, character.relationships, character.education, character.city]);
 
   const value: GameContextType = {
     character,
@@ -1964,6 +2187,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     sellBusiness,
     ipoBusiness,
     interactContact,
+    makeNewFriend,
     meetDatingCandidate,
     addDatingContact,
     haveBaby,

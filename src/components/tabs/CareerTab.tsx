@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { useGame } from '../../context/GameContext';
+import { useGame, VALID_DEGREES_FOR_FIELD } from '../../context/GameContext';
 import { CorporateField, SportType, ArtisticMedium } from '../../types/game';
 import { CORPORATE_LADDER } from '../../data/careerData';
 import { SPORTS_REGISTRY } from '../../data/sportsData';
 import { ARTS_CONFIG } from '../../data/artsData';
-import { AlertCircle, Award, Trophy } from 'lucide-react';
+import { AlertCircle, Award, Trophy, GraduationCap } from 'lucide-react';
 
 const CORPORATE_FIELDS: { id: CorporateField; label: string }[] = [
   { id: 'Tech', label: 'Tech & AI' },
@@ -119,6 +119,16 @@ export const CareerTab: React.FC = () => {
                 </p>
               </div>
             </div>
+          ) : character.education.inProgress ? (
+            <div className="p-4 rounded-lg bg-indigo-50 border border-indigo-200 text-xs text-indigo-950 flex items-start gap-2.5">
+              <GraduationCap className="w-5 h-5 text-indigo-700 shrink-0 mt-0.5" />
+              <div>
+                <strong className="font-bold">Active University Student:</strong>
+                <p className="mt-0.5 opacity-90">
+                  You are currently enrolled full-time studying <strong>{character.education.inProgress.degree}</strong> ({character.education.inProgress.yearsRemaining} years remaining). Full-time corporate vocations unlock upon completing your degree and graduating!
+                </p>
+              </div>
+            </div>
           ) : null}
 
           {character.corporateJob ? (
@@ -202,9 +212,28 @@ export const CareerTab: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {CORPORATE_LADDER[selectedCorpField]?.map((job) => {
               const isCurrent = character.corporateJob?.title === job.title;
-              const hasDegree = !job.requiredDegree || character.education.degree === job.requiredDegree;
-              const hasSmarts = character.stats.smarts >= job.minSmarts;
               const isAdult = character.age >= 18;
+              const isEnrolledStudent = character.education.inProgress !== null;
+              const allowedDegrees = VALID_DEGREES_FOR_FIELD[job.field] || [];
+              const degreeMatchesField = allowedDegrees.length === 0 || allowedDegrees.includes(character.education.degree);
+              const hasExactDegree = !job.requiredDegree || character.education.degree === job.requiredDegree;
+              const hasDegree = degreeMatchesField && hasExactDegree;
+              const hasSmarts = character.stats.smarts >= job.minSmarts;
+              const canApply = !isCurrent && isAdult && !isEnrolledStudent && hasDegree && hasSmarts;
+
+              const buttonLabel = isCurrent
+                ? 'Current Role'
+                : !isAdult
+                ? 'Under 18'
+                : isEnrolledStudent
+                ? 'Enrolled Student (Finish Degree)'
+                : !degreeMatchesField
+                ? `Discipline Mismatch (Requires ${job.field} Degree)`
+                : !hasExactDegree
+                ? `Requires ${job.requiredDegree}`
+                : !hasSmarts
+                ? `Requires ${job.minSmarts} Smarts`
+                : 'Apply Position';
 
               return (
                 <div key={job.title} className="card-v4 p-5 flex flex-col justify-between">
@@ -217,7 +246,8 @@ export const CareerTab: React.FC = () => {
                     <h4 className="font-grotesk text-xl font-bold text-[#1C1C1C] mb-2">{job.title}</h4>
 
                     <div className="text-xs text-[#1C1C1C] opacity-75 space-y-1 mb-4">
-                      <p>Degree: {job.requiredDegree || 'High School'}</p>
+                      <p>Field Discipline: <strong className="text-[#1C1C1C]">{job.field}</strong></p>
+                      <p>Required Degree: {job.requiredDegree || (allowedDegrees.length > 0 ? allowedDegrees.slice(0, 2).join(' / ') : 'High School Diploma')}</p>
                       <p>Smarts: {job.minSmarts}+</p>
                       <p>Prestige: +{job.prestigePoints} Rep</p>
                     </div>
@@ -228,10 +258,10 @@ export const CareerTab: React.FC = () => {
                       const res = applyCorporateJob(job.field, job.rank);
                       showMsg(res.message);
                     }}
-                    disabled={isCurrent || !hasDegree || !hasSmarts || !isAdult}
+                    disabled={!canApply}
                     className="btn-v4 w-full text-xs disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    {isCurrent ? 'Current Role' : !isAdult ? 'Under 18' : !hasDegree ? 'Missing Degree' : !hasSmarts ? 'Smarts Too Low' : 'Apply Position'}
+                    {buttonLabel}
                   </button>
                 </div>
               );

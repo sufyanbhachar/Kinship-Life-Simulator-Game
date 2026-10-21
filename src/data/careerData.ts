@@ -50,6 +50,7 @@ export const CORPORATE_LADDER: Record<CorporateField, CorporateJobTemplate[]> = 
       salary: 490000,
       minSmarts: 80,
       minExperience: 9,
+      requiredDegree: 'B.S. Computer Science',
       prestigePoints: 140
     },
     {
@@ -59,6 +60,7 @@ export const CORPORATE_LADDER: Record<CorporateField, CorporateJobTemplate[]> = 
       salary: 850000,
       minSmarts: 88,
       minExperience: 12,
+      requiredDegree: 'B.S. Computer Science',
       prestigePoints: 220
     }
   ],
@@ -100,6 +102,7 @@ export const CORPORATE_LADDER: Record<CorporateField, CorporateJobTemplate[]> = 
       salary: 950000,
       minSmarts: 82,
       minExperience: 10,
+      requiredDegree: 'B.S. Economics & Finance',
       prestigePoints: 190
     },
     {
@@ -109,6 +112,7 @@ export const CORPORATE_LADDER: Record<CorporateField, CorporateJobTemplate[]> = 
       salary: 2100000,
       minSmarts: 90,
       minExperience: 14,
+      requiredDegree: 'B.S. Economics & Finance',
       prestigePoints: 300
     }
   ],

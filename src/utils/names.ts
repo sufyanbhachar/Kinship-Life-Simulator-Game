@@ -133,3 +133,12 @@ export function generateNPC(
     avatarSeed: Math.floor(Math.random() * 1000)
   };
 }
+
+export function isPakistaniCity(city?: string): boolean {
+  if (!city) return true;
+  if (city.includes(',')) {
+    // Check if it says 'Pakistan' after comma
+    return city.toLowerCase().includes('pakistan');
+  }
+  return PAKISTAN_CITIES.some((pc) => city.toLowerCase().includes(pc.toLowerCase()));
+}
